@@ -24,6 +24,13 @@ def get_dates():
     return consts.START_DATE, consts.END_DATE
 
 
+def info_is_available(info, key) -> bool:
+    if key in info and info[key] != None:
+        return True
+
+    return False
+
+
 @st.cache_data(ttl=3600)
 def get_data(ticker: str):
     """
