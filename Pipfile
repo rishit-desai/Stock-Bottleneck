@@ -9,6 +9,7 @@ tensorflow = "*"
 yfinance = "*"
 pandas = "*"
 numpy = "*"
+streamlit = "*"
 
 [dev-packages]
 
