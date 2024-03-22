@@ -13,6 +13,8 @@ from tensorflow import keras
 import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import Callback
 import constants as consts
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def get_dates():
@@ -32,12 +34,12 @@ def info_is_available(info, key) -> bool:
 
 
 @st.cache_data(ttl=3600)
-def get_data(ticker: str):
+def get_data(stock: str):
     """
     Get preprocessed stock data from Yahoo Finance.
     """
     start, end = get_dates()
-    data = yf.download(ticker, start=start, end=end)
+    data = yf.download(stock, start=start, end=end)
     data = data.ffill()
     data_normalized = (data - data.min()) / (data.max() - data.min())
     return data_normalized
@@ -92,7 +94,7 @@ def _fit_model(model, data, epochs=consts.EPOCHS, batch_size=consts.BATCH_SIZE):
         data,
         epochs=epochs,
         batch_size=batch_size,
-        verbose=1,
+        verbose=0,
         callbacks=[bar_updater],
     )
     training_bar.progress(100)
@@ -111,8 +113,52 @@ class _UpdateProgressBar(Callback):
 def get_model(stock: str):
     model = _create_model()
 
-    data = get_data(ticker=stock)
+    data = get_data(stock=stock)
 
     _fit_model(model, data)
 
     return model
+
+
+def plot_reconstruction(model, train_data):
+    reconstructed_data = model.predict(train_data)
+    reconstruction_errors = np.mean(np.square(reconstructed_data - train_data), axis=1)
+
+    threshold = np.mean(reconstruction_errors) + 2 * np.std(reconstruction_errors)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    plt.plot(reconstruction_errors)
+    ax.axhline(y=threshold, color="red", linestyle="--", label="Threshold")
+    plt.xlabel("Time")
+    plt.ylabel("Reconstruction Error")
+    plt.title("Anomaly Detection with Threshold")
+    plt.legend()
+
+    st.pyplot(fig)
+
+
+def plot_examples(train_data, reconstructed_data):
+
+    stock_decoded = reconstructed_data[:, 3]
+    stock_input = train_data.values[:, 3]
+
+    stock_windows = []
+    decoded_windows = []
+    for _ in range(10):
+        start = np.random.randint(0, len(stock_input) - 200)
+        window = stock_input[start : start + 200]
+        stock_windows.append(window)
+        window = stock_decoded[start : start + 200]
+        decoded_windows.append(window)
+
+    plt.figure(figsize=(10, 30))
+
+    for i in range(10):
+        plt.subplot(8, 2, i + 1)
+        plt.plot(stock_windows[i], label="Stock Data")
+        plt.plot(decoded_windows[i], label="Decoded Data")
+        plt.title("Example " + str(i + 1))
+        plt.legend()
+
+    st.pyplot(plt)

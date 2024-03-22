@@ -3,7 +3,13 @@ Main file for the Stock Bottleneck App.
 """
 
 import streamlit as st
-from utils import get_model, info_is_available
+from utils import (
+    get_model,
+    get_data,
+    info_is_available,
+    plot_reconstruction,
+    plot_examples,
+)
 from constants import HIDE_STREAMLIT_STYLE
 import yfinance as yf
 
@@ -24,9 +30,9 @@ st.text_input(label="Enter Stock Ticker", key="stock", value="AMZN")
 
 company_info = yf.Ticker(st.session_state.stock).info
 
-info_container = st.container()
+analysis_container = st.container()
 
-col1, col2, col3 = info_container.columns(3)
+col1, col2, col3 = analysis_container.columns(3)
 
 with col1:
     st.metric(
@@ -53,7 +59,7 @@ with col3:
         ),
     )
 
-col4, col5, col6 = info_container.columns(3)
+col4, col5, col6 = analysis_container.columns(3)
 
 with col4:
     st.metric(
@@ -87,3 +93,29 @@ with col6:
 model = get_model(stock=st.session_state.stock)
 
 st.text("Model Training Complete!")
+
+tab1, tab2 = st.tabs(["Stock Data", "Reconstruction Examples"])
+
+data = get_data(stock=st.session_state.stock)
+
+with tab1:
+    chart_data = {}
+
+    chart_data["Date"] = data.index
+    chart_data["Adj Close"] = data["Adj Close"]
+
+    st.write("Stock Data")
+    st.line_chart(chart_data, x="Date", y=["Adj Close"])
+
+    st.write("Reconstruction")
+    plot_reconstruction(model, data)
+
+
+with tab2:
+    st.write("Reconstruction Examples")
+
+    new_data = get_data(stock=st.session_state.stock)
+
+    reconstructed_data = model.predict(new_data)
+
+    plot_examples(new_data, reconstructed_data)
